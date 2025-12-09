@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <title>TMO(Time Motion Optimizer Web Version 1.0) Create by InventorHan</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 전체 레이아웃 컨테이너 -->
+    <div class="container">
+        <!-- 1. 상단 내비게이션 바 -->
+        <nav class="nav-bar">
+            <h1>TMO(Time Motion Optimizer Web Version 1.0) Create by InventorHan</h1>
+            <div class="nav-controls">
+                <button id="workTableBtn" data-lang-key="work-table-btn">Work Table</button>
+                <button id="analysisBtn" data-lang-key="analysis-btn">Analysis</button>
+                <button id="manualBtn" data-lang-key="manual-btn">설명서</button>
+                <select id="languageSelector">
+                    <option value="ko">한국어</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文</option>
+                </select>
+            </div>
+        </nav>
+
+        <!-- 2. 왼쪽 패널 -->
+        <aside class="left-panel">
+            <!-- 2-1. 동영상 플레이어 섹션 -->
+            <section class="video-section">
+                <video id="videoPlayer" controls="none">
+                    <source src="" type="video/mp4">
+                    브라우저가 비디오 태그를 지원하지 않습니다.
+                </video>
+                <div id="timeDisplay" class="time-display">0.00 / 0.00</div>
+                <div class="video-load-controls">
+                    <input type="file" id="videoUpload" accept="video/*" style="display: none;">
+                    <button id="loadVideoBtn" data-lang-key="video-open-btn">Video Open</button>
+                    <span id="videoPathDisplay" data-lang-default="선택된 파일 없음">선택된 파일 없음</span>
+                </div>
+            </section>
+
+            <!-- 2-2. Unit 관리 섹션 -->
+            <section class="unit-controls">
+                <div class="unit-selection-wrapper">
+                    <label for="unitSelector" data-lang-key="unit-select-label">Unit 선택:</label>
+                    <select id="unitSelector">
+                        <!-- JS로 옵션이 추가됩니다 -->
+                    </select>
+                    <div class="button-group">
+                        <button id="addUnitBtn" data-lang-key="add-btn">추가</button>
+                        <button id="editUnitBtn" data-lang-key="edit-btn">수정</button>
+                        <button id="deleteUnitBtn" data-lang-key="delete-btn">삭제</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2-3. 파일 관리 섹션 -->
+            <section class="file-controls">
+                <label for="filePath" data-lang-key="file-path-label">파일 경로:</label>
+                <input type="text" id="filePath" readonly>
+                <input type="file" id="excelUpload" accept=".xlsx, .xls" style="display: none;">
+                <div class="button-group">
+                    <button id="saveExcelBtn" data-lang-key="saveExcelBtn">Excel 저장</button>
+                    <button id="loadExcelBtn" data-lang-key="loadExcelBtn">Excel 불러오기</button>
+                    <button id="resetBtn" data-lang-key="resetBtn">Reset</button>
+                </div>
+            </section>
+        </aside>
+
+        <!-- 화면 크기 조절 핸들 -->
+        <div class="resizer" id="resizer"></div>
+
+        <!-- 3. 오른쪽 작업 테이블 -->
+        <main class="right-panel">
+            <table class="work-table">
+                <thead>
+                    <tr>
+                        <th data-lang-key="th-unit">Unit</th>
+                        <th data-lang-key="th-process">Process</th>
+                        <th data-lang-key="th-cycle">Cycle</th>
+                        <th data-lang-key="th-work-element">Work Element</th>
+                        <th data-lang-key="th-unit-motion">Unit Motion</th>
+                        <th data-lang-key="th-start-time">Start Time</th>
+                        <th data-lang-key="th-end-time">End Time</th>
+                        <th data-lang-key="th-time-interval">Time Interval</th>
+                        <th data-lang-key="th-value-type">Value Type</th>
+                    </tr>
+                </thead>
+                <tbody id="workTableBody">
+                    <!-- 테이블 내용은 동적으로 추가될 수 있습니다. -->
+                </tbody>
+            </table>
+            <div id="analysisView" style="display: none;">
+                <h2 data-lang-key="analysis-title">Unit별 시간 분석</h2>
+                <div id="analysisTableContainer">
+                    <!-- Analysis table will be generated here -->
+                </div>
+                <div id="analysisChartContainer"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Unit 추가/수정용 팝업(모달) -->
+    <div id="unitModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle" data-lang-key="modal-title-add">Unit 이름 입력</h3>
+            <input type="text" id="unitNameInput" placeholder="Unit 이름을 입력하세요">
+            <div class="modal-buttons">
+                <button id="modalOkBtn">확인</button>
+                <button id="modalCancelBtn">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 설명서 팝업(모달) -->
+    <div id="manualModal" class="modal">
+        <div class="manual-modal-content">
+            <span class="close-manual-btn">&times;</span>
+            <h2 data-lang-key="manual-title">사용 설명서</h2>
+            <div class="manual-content">
+                <h3 data-lang-key="manual-video-control">동영상 제어</h3>
+                <ul>
+                    <li data-lang-key="manual-video-play"><b>재생/일시정지:</b> <code>Space Bar</code>를 누르거나, 동영상 하단 컨트롤 바를 이용하세요.</li>
+                    <li data-lang-key="manual-video-load"><b>불러오기:</b> '비디오 열기' 버튼을 클릭하거나, 동영상 파일을 플레이어 영역으로 드래그 앤 드롭하세요.</li>
+                    <li data-lang-key="manual-video-shortcuts-title"><b>시간 이동 단축키 (동영상 영역 클릭 후 활성화):</b></li>
+                    <ul>
+                        <li data-lang-key="manual-shortcut-qw"><b>Q/W:</b> -1초 / +1초</li>
+                        <li data-lang-key="manual-shortcut-as"><b>A/S:</b> -0.1초 / +0.1초</li>
+                        <li data-lang-key="manual-shortcut-zx"><b>Z/X:</b> -0.01초 / +0.01초</li>
+                    </ul>
+                </ul>
+
+                <h3 data-lang-key="manual-table-ops">테이블 작업</h3>
+                <ul>
+                    <li data-lang-key="manual-table-add"><b>행 추가:</b> 동영상을 더블클릭하면 현재 시간에 행이 추가되고, 자동으로 선택 및 하이라이트됩니다.</li>
+                    <li data-lang-key="manual-table-delete"><b>행 삭제:</b> 테이블에서 행을 클릭하여 선택한 후, 키보드의 <code>Delete</code> 키를 누르세요.</li>
+                    <li data-lang-key="manual-table-repeat"><b>구간 반복 재생:</b> 행을 선택한 후, <code>R</code> 키를 누르면 해당 행의 Start Time부터 End Time까지 반복 재생됩니다.</li>
+                    <li data-lang-key="manual-table-seek"><b>동영상 이동:</b> 행을 클릭하면 해당 행의 'Start Time'으로 동영상이 즉시 이동합니다.</li>
+                </ul>
+
+                <h3 data-lang-key="manual-interval-control">Time Interval 조절</h3>
+                <ul>
+                    <li data-lang-key="manual-interval-adjust">입력 상자의 위/아래 버튼 또는 마우스 휠 스크롤로 0.01초 단위 정밀 조절이 가능합니다.</li>
+                    <li data-lang-key="manual-interval-interlock">조절 시 인접한 행의 시간이 자동으로 변경되며, 작업 시간이 서로 겹치지 않도록 안전장치(인터록)가 작동합니다.</li>
+                </ul>
+
+                <h3 data-lang-key="manual-unit-management">Unit 관리</h3>
+                <ul>
+                    <li data-lang-key="manual-unit-concept">각 Unit은 독립된 동영상과 테이블 데이터를 가집니다. Unit을 변경하면 작업 내용이 자동으로 저장되고 복원됩니다.</li>
+                    <li data-lang-key="manual-unit-purpose"><b>사용 목적:</b> 여러 작업 구간, 다른 작업자, 또는 개선 전/후 비교 등 독립적인 분석이 필요할 때 유용합니다. 각 Unit은 별도의 작업 공간 역할을 하여 체계적인 데이터 관리를 돕습니다.</li>
+                </ul>
+
+                <h3 data-lang-key="manual-data-io">데이터 저장/불러오기</h3>
+                <ul>
+                    <li data-lang-key="manual-data-excel"><b>'Excel 저장/불러오기'</b> 버튼을 사용하여 모든 Unit의 작업 데이터를 .xlsx 파일로 관리할 수 있습니다. (Excel 불러오기 시, 동영상은 수동으로 다시 선택해야 합니다.)</li>
+                    <li data-lang-key="manual-data-reset"><b>'Reset'</b> 버튼으로 모든 작업 내용을 초기화할 수 있습니다.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
